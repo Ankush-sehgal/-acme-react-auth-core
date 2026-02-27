@@ -1,4 +1,4 @@
-# @acme/react-auth-core
+# react-auth-core
 
 A production-ready React authentication library with enterprise-grade features.
 
