@@ -1,0 +1,38 @@
+{
+  "name": "@acme/react-auth-core",
+  "version": "1.0.0",
+  "description": "Production-ready React authentication library with RBAC, tokens, and auto-refresh",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "react-router-dom": ">=6"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "react",
+    "authentication",
+    "auth",
+    "rbac",
+    "access-token",
+    "refresh-token",
+    "security"
+  ],
+  "author": "",
+  "license": "MIT"
+}
