@@ -7,6 +7,7 @@ interface AuthContextValue extends AuthState {
   login(payload: LoginPayload): void;
   logout(): void;
   refreshAccessToken(): Promise<string>;
+  verifyMfa(code: string): Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -17,6 +18,7 @@ export interface AuthProviderProps {
   refreshStrategy?: RefreshStrategy;
   storage?: StorageAdapter;
   fetcher?: typeof fetch;
+  mfaEndpoint?: string;
 }
 
 export const AuthProvider = ({
@@ -25,11 +27,14 @@ export const AuthProvider = ({
   refreshStrategy = "storage",
   storage,
   fetcher = fetch,
+  mfaEndpoint,
 }: AuthProviderProps) => {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     accessToken: null,
     user: null,
+    isMfaRequired: false,
+    mfaToken: null,
   });
 
   const refreshTimer = useRef<number | undefined>(undefined);
@@ -50,6 +55,8 @@ export const AuthProvider = ({
       accessToken: null,
       user: null,
       isAuthenticated: false,
+      isMfaRequired: false,
+      mfaToken: null,
     });
   };
 
@@ -88,6 +95,17 @@ export const AuthProvider = ({
   const refreshAccessToken = createRefreshManager(baseRefresh);
 
   const login = (payload: LoginPayload) => {
+    if ("mfaRequired" in payload && payload.mfaRequired) {
+      setState({
+        accessToken: null,
+        user: null,
+        isAuthenticated: false,
+        isMfaRequired: true,
+        mfaToken: payload.mfaToken,
+      });
+      return;
+    }
+
     if ("refreshToken" in payload && storage) {
       storage.set(payload.refreshToken);
     }
@@ -96,9 +114,31 @@ export const AuthProvider = ({
       accessToken: payload.accessToken,
       user: payload.user,
       isAuthenticated: true,
+      isMfaRequired: false,
+      mfaToken: null,
     });
 
     scheduleRefresh(payload.expiresIn);
+  };
+
+  const verifyMfa = async (code: string) => {
+    if (!state.mfaToken || !mfaEndpoint) {
+      throw new Error("MFA verification is not configured or no token found");
+    }
+
+    const response = await fetcher(mfaEndpoint, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfaToken: state.mfaToken, code }),
+    });
+
+    if (!response.ok) {
+      throw new Error("MFA verification failed");
+    }
+
+    const data = await response.json();
+    login(data);
   };
 
   useEffect(() => {
@@ -112,6 +152,7 @@ export const AuthProvider = ({
         login,
         logout,
         refreshAccessToken,
+        verifyMfa,
       }}
     >
       {children}

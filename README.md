@@ -11,13 +11,16 @@ A production-ready React authentication library with enterprise-grade features.
 ✅ RBAC (roles & permissions)  
 ✅ Protected routes  
 ✅ UI-level access control  
+✅ Multi-Factor Authentication (MFA)
+✅ Dedicated permission hooks (`useRole`, `usePermissions`)
+✅ Route guard Higher-Order Components (withAuth, withRole)
 ✅ TypeScript-first  
 ✅ npm-publish ready
 
 ## Installation
 
 ```bash
-npm install @acme/react-auth-core
+npm install @ankushsehgal909/react-auth-core
 ```
 
 ## Peer Dependencies
@@ -31,7 +34,7 @@ npm install react react-router-dom
 ### Cookie-Based (Secure)
 
 ```tsx
-import { AuthProvider } from "@acme/react-auth-core";
+import { AuthProvider } from "@ankushsehgal909/react-auth-core";
 
 <AuthProvider refreshEndpoint="/auth/refresh" refreshStrategy="cookie">
   <App />
@@ -41,7 +44,7 @@ import { AuthProvider } from "@acme/react-auth-core";
 ### Storage-Based (Fallback)
 
 ```tsx
-import { AuthProvider, localStorageAdapter } from "@acme/react-auth-core";
+import { AuthProvider, localStorageAdapter } from "@ankushsehgal909/react-auth-core";
 
 <AuthProvider
   refreshEndpoint="/auth/refresh"
@@ -62,17 +65,21 @@ import { AuthProvider, localStorageAdapter } from "@acme/react-auth-core";
 | `refreshStrategy` | `"cookie" \| "storage"` | No       | Default: `"storage"`             |
 | `storage`         | `StorageAdapter`        | No       | Custom storage adapter           |
 | `fetcher`         | `typeof fetch`          | No       | Custom fetch function            |
+| `mfaEndpoint`     | `string`                | No       | Endpoint to verify MFA token     |
 
 ### useAuth Hook
 
 ```tsx
 const {
   isAuthenticated,
+  isMfaRequired,
+  mfaToken,
   accessToken,
   user,
   login,
   logout,
   refreshAccessToken,
+  verifyMfa,
   canAccess,
 } = useAuth();
 ```
@@ -89,7 +96,7 @@ const canAccess = useAuth().canAccess({
 ### ProtectedRoute
 
 ```tsx
-import { ProtectedRoute } from "@acme/react-auth-core";
+import { ProtectedRoute } from "@ankushsehgal909/react-auth-core";
 
 <ProtectedRoute
   roles={["admin"]}
@@ -104,11 +111,46 @@ import { ProtectedRoute } from "@acme/react-auth-core";
 ### Can Component
 
 ```tsx
-import { Can } from "@acme/react-auth-core";
+import { Can } from "@ankushsehgal909/react-auth-core";
 
 <Can roles={["admin"]} permissions={["write:data"]} fallback={<AccessDenied />}>
   <DeleteButton />
 </Can>;
+```
+
+### useRole & usePermissions Hooks
+
+```tsx
+import { useRole, usePermissions } from "@ankushsehgal909/react-auth-core";
+
+const isAdmin = useRole("admin");
+const canWrite = usePermissions("write:data");
+```
+
+### Higher-Order Components (HOCs)
+
+```tsx
+import { withAuth, withRole } from "@ankushsehgal909/react-auth-core";
+
+const ProtectedDashboard = withAuth(Dashboard, { redirectTo: "/login" });
+const AdminPanel = withRole(Panel, { roles: ["admin"], redirectTo: "/403" });
+```
+
+### Multi-Factor Authentication (MFA)
+
+If your login endpoint returns an MFA challenge (`{ mfaRequired: true, mfaToken: "..." }`), the context enters an intermediate state where `isMfaRequired` is `true`.
+
+```tsx
+const { isMfaRequired, verifyMfa } = useAuth();
+
+// ... inside your component
+if (isMfaRequired) {
+  return (
+    <button onClick={() => verifyMfa("123456")}>
+      Submit MFA Code
+    </button>
+  );
+}
 ```
 
 ## Types
@@ -126,8 +168,15 @@ interface User {
 ### LoginPayload
 
 ```ts
+// With MFA Challenge
+type LoginPayload = {
+  mfaRequired: true;
+  mfaToken: string;
+};
+
 // With refresh token (storage strategy)
 type LoginPayload = {
+  mfaRequired?: false;
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
@@ -136,6 +185,7 @@ type LoginPayload = {
 
 // Without refresh token (cookie strategy)
 type LoginPayload = {
+  mfaRequired?: false;
   accessToken: string;
   expiresIn: number;
   user: User;
