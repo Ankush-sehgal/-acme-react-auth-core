@@ -1,6 +1,6 @@
 {
   "name": "@ankushsehgal909/react-auth-core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Production-ready React authentication library with RBAC, tokens, and auto-refresh",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
